@@ -14,7 +14,7 @@ Resources:
   GraphQLApi:
     Type: 'AWS::AppSync::GraphQLApi'
     Properties:
-      Name: ViuFeedApp
+      Name: ViuFeedAppStaging
       AuthenticationType: API_KEY
   ViuFeedLambdaFunctionDataSource:
     Type: 'AWS::AppSync::DataSource'
