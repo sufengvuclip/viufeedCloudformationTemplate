@@ -1,4 +1,15 @@
 Description: AWSAppSync with Neptune
+Parameters:
+  OperationType:
+    Description: operation type.
+    Default: create
+    Type: String
+    AllowedValues:
+      - update
+      - create
+    ConstraintDescription: must specify update or create.
+Conditions:
+  CreateResources: !Equals [ !Ref OperationType, create ]
 Resources:
   GraphQLApi:
     Type: 'AWS::AppSync::GraphQLApi'
@@ -7,12 +18,15 @@ Resources:
       AuthenticationType: AWS_IAM
   ViuFeedLambdaFunctionDataSource:
     Type: 'AWS::AppSync::DataSource'
+#    Condition: CreateResources
     Properties:
       ApiId: !GetAtt GraphQLApi.ApiId
       Name: ViuFeedLambdaFunction
       Description: The Lambda function in us-west-2
       Type: AWS_LAMBDA
       ServiceRoleArn: 'arn:aws:iam::148016069073:role/cloud9-viuFeed-viuFeedRole-1FQCUPHEUWJKL'
+      LambdaConfig:
+        LambdaFunctionArn: "arn:aws:lambda:us-west-2:148016069073:function:cloud9-viuFeed-viuFeed-5NQIYDOUIYHI"
   MutationCreateEventResolver:
     Type: 'AWS::AppSync::Resolver'
     DependsOn: Schema
