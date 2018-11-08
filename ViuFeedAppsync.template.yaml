@@ -1,0 +1,292 @@
+Description: AWSAppSync with Neptune
+Resources:
+  GraphQLApi:
+    Type: 'AWS::AppSync::GraphQLApi'
+    Properties:
+      Name: ViuFeedApp
+      AuthenticationType: AWS_IAM
+  ViuFeedLambdaFunctionDataSource:
+    Type: 'AWS::AppSync::DataSource'
+    Properties:
+      ApiId: !GetAtt GraphQLApi.ApiId
+      Name: ViuFeedLambdaFunction
+      Description: The Lambda function in us-west-2
+      Type: AWS_LAMBDA
+      ServiceRoleArn: 'arn:aws:iam::148016069073:role/cloud9-viuFeed-viuFeedRole-1FQCUPHEUWJKL'
+  MutationCreateEventResolver:
+    Type: 'AWS::AppSync::Resolver'
+    DependsOn: Schema
+    Properties:
+      ApiId: !GetAtt GraphQLApi.ApiId
+      TypeName: Mutation
+      FieldName: createEvent
+      DataSourceName: !GetAtt ViuFeedLambdaFunctionDataSource.Name
+      RequestMappingTemplate: |
+        {
+            "version" : "2017-02-28",
+            "operation": "Invoke",
+            #set($id = $util.autoId())
+            "payload": {
+              "gql":"g.addV('Event').property(id, '$id').property('feedOwnerId', ':FEEDOWNERID').property('type', ':TYPE').property('message', ':MESSAGE').property('authorId', ':AUTHORID').property('clipId', ':CLIPID').property('timestamp', :TIMESTAMP)",
+              "variableMapping": {
+                ":FEEDOWNERID": "$context.arguments.feedOwnerId",
+                ":TYPE": "$context.arguments.type",
+                ":AUTHORID" : "$context.arguments.authorId",
+                ":MESSAGE" : "$context.arguments.message",
+                ":CLIPID" : "$context.arguments.clipId",
+                ":TIMESTAMP" : $context.arguments.timestamp
+              },
+              "responseGQL": "g.V('$id')"
+            }
+        }
+      ResponseMappingTemplate: |
+        #set( $ret = $util.parseJson($context.result)[0] )
+        {
+           "id": "$!ret.get('@value').get('id')",
+           "feedOwnerId": "$!ret.get('@value').get('properties').get('feedOwnerId')[0].get('@value').get('value')",
+           "clipId": "$!ret.get('@value').get('properties').get('clipId')[0].get('@value').get('value')",
+           "type": "$!ret.get('@value').get('properties').get('type')[0].get('@value').get('value')",
+           "message": "$!ret.get('@value').get('properties').get('message')[0].get('@value').get('value')",
+           "authorId": "$!ret.get('@value').get('properties').get('authorId')[0].get('@value').get('value')",
+           "timestamp": "$!ret.get('@value').get('properties').get('timestamp')[0].get('@value').get('value').get('@value')"
+        }
+  MutationCommentOnEventResolver:
+    Type: 'AWS::AppSync::Resolver'
+    DependsOn: Schema
+    Properties:
+      ApiId: !GetAtt GraphQLApi.ApiId
+      TypeName: Mutation
+      FieldName: commentOnEvent
+      DataSourceName: !GetAtt ViuFeedLambdaFunctionDataSource.Name
+      RequestMappingTemplate: |
+        {
+            "version" : "2017-02-28",
+            "operation": "Invoke",
+            #set($id = $util.autoId())
+            "payload": {
+              "gql":"g.addV('Comment').property(id, '$id').property('authorId', ':AUTHORID').property('content', ':CONTENT').property('eventId', ':EVENTID').property('timestamp', :TIMESTAMP).as('c').addE('commentTo').to(g.V(':EVENTID'))",
+              "variableMapping": {
+                ":AUTHORID" : "$context.arguments.authorId",
+                ":CONTENT" : "$context.arguments.content",
+                ":EVENTID" : "$context.arguments.eventId",
+                ":TIMESTAMP" : $context.arguments.timestamp,
+              },
+              "responseGQL": "g.V('$id')"
+            }
+        }
+      ResponseMappingTemplate: |
+        #set( $ret = $util.parseJson($context.result)[0] )
+        {
+           "id": "$!ret.get('@value').get('id')",
+           "authorId": "$!ret.get('@value').get('properties').get('authorId')[0].get('@value').get('value')",
+           "content": "$!ret.get('@value').get('properties').get('content')[0].get('@value').get('value')",
+           "eventId": "$!ret.get('@value').get('properties').get('eventId')[0].get('@value').get('value')",
+           "timestamp": "$!ret.get('@value').get('properties').get('timestamp')[0].get('@value').get('value').get('@value')"
+        }
+  Schema:
+    Type: 'AWS::AppSync::GraphQLSchema'
+    Properties:
+      ApiId: !GetAtt GraphQLApi.ApiId
+      Definition: |
+        type Clip {
+        	clipId: String!
+        	title: String!
+        	thumb: String!
+        }
+
+        type ClipShot {
+        	clipShotId: ID!
+        	eventId: String!
+        	clipId: String
+        	url: String
+        	timestamp: Int!
+        }
+
+        type ClipShotConnection {
+        	items: [ClipShot]
+        	nextToken: String
+        }
+
+        type Comment {
+        	id: ID!
+        	authorId: String!
+        	author: User
+        	content: String!
+        	timestamp: Int!
+        	eventId: String!
+        }
+
+        type CommentConnection {
+        	items: [Comment]
+        	nextToken: String
+        }
+
+        type Event {
+        	id: ID!
+        	feedOwnerId: String!
+        	message: String
+        	type: EventType!
+        	authorId: String!
+        	author: User
+        	clipId: String
+        	clip: Clip
+        	timestamp: Int!
+        	comments(limit: Int, nextToken: String): CommentConnection
+        	likes(limit: Int, nextToken: String): LikeConnection
+        	clipshots(limit: Int, nextToken: String): ClipShotConnection
+        }
+
+        type EventConnection {
+        	items: [Event]
+        	nextToken: String
+        }
+
+        enum EventType {
+        	EventTypeText
+        	EventTypeClip
+        	EventTypeClipShot
+        }
+
+        type Like {
+        	likeId: ID!
+        	eventId: String!
+        	authorId: String!
+        	author: User
+        	timestamp: Int!
+        }
+
+        type LikeConnection {
+        	items: [Like]
+        	nextToken: String
+        }
+
+        type Mutation {
+        	commentOnEvent(
+        		authorId: String!,
+        		content: String!,
+        		eventId: String!,
+        		timestamp: Int!
+        	): Comment
+        	likeOnEvent(authorId: String!, eventId: ID!, timestamp: Int!): Like
+        	clipShotOnEvent(
+        		clipId: String!,
+        		url: String,
+        		eventId: ID!,
+        		timestamp: Int!
+        	): ClipShot
+        	createEvent(
+        		feedOwnerId: String!,
+        		type: EventType!,
+        		message: String!,
+        		authorId: String!,
+        		clipId: String,
+        		timestamp: Int!
+        	): Event
+        	deleteEvent(id: ID!): Event
+        	addUser(userId: String!, name: String!, profilePic: String): User
+        }
+
+        type Query {
+        	getEvent(id: ID!): Event
+        	listEvents(filter: TableEventFilterInput, limit: Int, nextToken: String): EventConnection
+        	getFeed(feedOwnerId: ID!, limit: Int, nextToken: String): EventConnection
+        	listUsers(filter: TableUserFilterInput, limit: Int, nextToken: String): UserConnection
+        	getUser(userId: String!): User
+        }
+
+        type Subscription {
+        	subscribeToEventComments(eventId: String!): Comment
+        		@aws_subscribe(mutations: ["commentOnEvent"])
+        }
+
+        input TableBooleanFilterInput {
+        	eq: Boolean
+        	ne: Boolean
+        }
+
+        input TableEventFilterInput {
+        	id: TableIDFilterInput
+        	message: TableStringFilterInput
+        }
+
+        input TableFloatFilterInput {
+        	between: [Float]
+        	contains: Float
+        	eq: Float
+        	ge: Float
+        	gt: Float
+        	le: Float
+        	lt: Float
+        	ne: Float
+        	notContains: Float
+        }
+
+        input TableIDFilterInput {
+        	beginsWith: ID
+        	between: [ID]
+        	contains: ID
+        	eq: ID
+        	ge: ID
+        	gt: ID
+        	le: ID
+        	lt: ID
+        	ne: ID
+        	notContains: ID
+        }
+
+        input TableIntFilterInput {
+        	between: [Int]
+        	contains: Int
+        	eq: Int
+        	ge: Int
+        	gt: Int
+        	le: Int
+        	lt: Int
+        	ne: Int
+        	notContains: Int
+        }
+
+        input TableStringFilterInput {
+        	beginsWith: String
+        	between: [String]
+        	contains: String
+        	eq: String
+        	ge: String
+        	gt: String
+        	le: String
+        	lt: String
+        	ne: String
+        	notContains: String
+        }
+
+        input TableUserFilterInput {
+        	userId: TableStringFilterInput
+        	name: TableStringFilterInput
+        }
+
+        type User {
+        	userId: String!
+        	name: String!
+        	profilePic: String
+        }
+
+        type UserConnection {
+        	items: [User]
+        	nextToken: String
+        }
+Outputs:
+  GraphQLApiARN:
+    Description: The App ID of the GraphQL endpoint.
+    Value: !Ref GraphQLApi
+  GraphQLApiId:
+    Description: The App ID of the GraphQL endpoint.
+    Value: !GetAtt GraphQLApi.ApiId
+  GraphQLApiEndpoint:
+    Description: The URL for the GraphQL endpoint.
+    Value: !GetAtt GraphQLApi.GraphQLUrl
+  ViuFeedLambdaFunctionDataSourceARN:
+    Description: The ARN for the viu feed lambda function DataSource.
+    Value: !Ref ViuFeedLambdaFunctionDataSource
+  ViuFeedLambdaFunctionDataSourceName:
+    Description: The ARN for the viu feed lambda function DataSource.
+    Value: !GetAtt ViuFeedLambdaFunctionDataSource.Name
