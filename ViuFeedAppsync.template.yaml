@@ -24,7 +24,7 @@ Resources:
       Name: ViuFeedLambdaFunction
       Description: The Lambda function in us-west-2
       Type: AWS_LAMBDA
-      ServiceRoleArn: 'arn:aws:iam::148016069073:policy/service-role/appsync-ds-lam-xcccz5-cloud9-viuFeed-viuFe'
+      ServiceRoleArn: 'arn:aws:iam::148016069073:role/ViufeedAppsyncLambdaDatasource'
       LambdaConfig:
         LambdaFunctionArn: "arn:aws:lambda:us-west-2:148016069073:function:cloud9-viuFeed-viuFeed-5NQIYDOUIYHI"
   MutationCreateEventResolver:
