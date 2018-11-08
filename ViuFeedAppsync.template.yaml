@@ -97,6 +97,38 @@ Resources:
            "eventId": "$!ret.get('@value').get('properties').get('eventId')[0].get('@value').get('value')",
            "timestamp": "$!ret.get('@value').get('properties').get('timestamp')[0].get('@value').get('value').get('@value')"
         }
+  QueryGetPostResolver:
+    Type: "AWS::AppSync::Resolver"
+    DependsOn: Schema
+    Properties:
+      ApiId: !GetAtt GraphQLApi.ApiId
+      TypeName: Query
+      FieldName: getEvent
+      DataSourceName: !GetAtt ViuFeedLambdaFunctionDataSource.Name
+      RequestMappingTemplate: |
+        {
+            "version" : "2017-02-28",
+            "operation": "Invoke",
+            #set($id = $util.autoId())
+            "payload": {
+              "gql":"g.V(':EVENTID')",
+              "variableMapping": {
+                ":EVENTID": "$context.arguments.id"
+              }
+            }
+        }
+      ResponseMappingTemplate: |
+        #set( $ret = $util.parseJson($context.result)[0] )
+        {
+           "id": "$!ret.get('@value').get('id')",
+           "feedOwnerId": "$!ret.get('@value').get('properties').get('feedOwnerId')[0].get('@value').get('value')",
+           "clipId": "$!ret.get('@value').get('properties').get('clipId')[0].get('@value').get('value')",
+           "type": "$!ret.get('@value').get('properties').get('type')[0].get('@value').get('value')",
+           "message": "$!ret.get('@value').get('properties').get('message')[0].get('@value').get('value')",
+           "authorId": "$!ret.get('@value').get('properties').get('authorId')[0].get('@value').get('value')",
+           "timestamp": "$!ret.get('@value').get('properties').get('timestamp')[0].get('@value').get('value').get('@value')"
+        }
+
   Schema:
     Type: 'AWS::AppSync::GraphQLSchema'
     Properties:
