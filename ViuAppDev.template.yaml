@@ -1,0 +1,1108 @@
+Description: AWSAppSync with Dynamo
+Parameters:
+  OperationType:
+    Description: operation type.
+    Default: create
+    Type: String
+    AllowedValues:
+      - update
+      - create
+    ConstraintDescription: must specify update or create.
+Conditions:
+  CreateResources: !Equals [ !Ref OperationType, create ]
+Resources:
+  GraphQLApi:
+    Type: 'AWS::AppSync::GraphQLApi'
+    Properties:
+      Name: ViuAppDevStaging
+      AuthenticationType: API_KEY
+
+
+  AppSyncClipShotTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      AttributeDefinitions:
+        -
+          AttributeName: "eventId"
+          AttributeType: "S"
+        -
+          AttributeName: "clipShotId"
+          AttributeType: "S"
+        -
+          AttributeName: "timestamp"
+          AttributeType: "N"
+      KeySchema:
+        -
+          AttributeName: "eventId"
+          KeyType: "HASH"
+        -
+          AttributeName: "clipShotId"
+          KeyType: "RANGE"
+      ProvisionedThroughput:
+        ReadCapacityUnits: "5"
+        WriteCapacityUnits: "5"
+      TableName: "AppSyncClipShotTableStaging"
+      GlobalSecondaryIndexes:
+        -
+          IndexName: "AppSyncClipShot-eventId-timestamp-index"
+          KeySchema:
+            -
+              AttributeName: "eventId"
+              KeyType: "HASH"
+            -
+              AttributeName: "timestamp"
+              KeyType: "RANGE"
+          Projection:
+            ProjectionType: "ALL"
+          ProvisionedThroughput:
+            ReadCapacityUnits: "5"
+            WriteCapacityUnits: "5"
+
+  AppSyncEventTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      AttributeDefinitions:
+        -
+          AttributeName: "feedOwnerId"
+          AttributeType: "S"
+        -
+          AttributeName: "id"
+          AttributeType: "S"
+        -
+          AttributeName: "timestamp"
+          AttributeType: "N"
+      KeySchema:
+        -
+          AttributeName: "id"
+          KeyType: "HASH"
+      ProvisionedThroughput:
+        ReadCapacityUnits: "5"
+        WriteCapacityUnits: "5"
+      TableName: "AppSyncEventTableStaging"
+      GlobalSecondaryIndexes:
+        -
+          IndexName: "AppSyncEvent-feedId-timestamp-index"
+          KeySchema:
+            -
+              AttributeName: "feedOwnerId"
+              KeyType: "HASH"
+            -
+              AttributeName: "timestamp"
+              KeyType: "RANGE"
+          Projection:
+            ProjectionType: "ALL"
+          ProvisionedThroughput:
+            ReadCapacityUnits: "5"
+            WriteCapacityUnits: "5"
+
+  AppSyncUserTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      AttributeDefinitions:
+        -
+          AttributeName: "userId"
+          AttributeType: "S"
+      KeySchema:
+        -
+          AttributeName: "userId"
+          KeyType: "HASH"
+      ProvisionedThroughput:
+        ReadCapacityUnits: "5"
+        WriteCapacityUnits: "5"
+      TableName: "AppSyncUserTableStaging"
+
+  SocialCommentTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      AttributeDefinitions:
+        -
+          AttributeName: "commentId"
+          AttributeType: "S"
+        -
+          AttributeName: "eventId"
+          AttributeType: "S"
+        -
+          AttributeName: "timestamp"
+          AttributeType: "N"
+      KeySchema:
+        -
+          AttributeName: "commentId"
+          KeyType: "HASH"
+      ProvisionedThroughput:
+        ReadCapacityUnits: "5"
+        WriteCapacityUnits: "5"
+      TableName: "SocialCommentTableStaging"
+      GlobalSecondaryIndexes:
+        -
+          IndexName: "AppSyncComment-eventId-timestamp-index"
+          KeySchema:
+            -
+              AttributeName: "eventId"
+              KeyType: "HASH"
+            -
+              AttributeName: "timestamp"
+              KeyType: "RANGE"
+          Projection:
+            ProjectionType: "ALL"
+          ProvisionedThroughput:
+            ReadCapacityUnits: "5"
+            WriteCapacityUnits: "5"
+
+  SocialLikeTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      AttributeDefinitions:
+        -
+          AttributeName: "authorId"
+          AttributeType: "S"
+        -
+          AttributeName: "eventId"
+          AttributeType: "S"
+        -
+          AttributeName: "likeId"
+          AttributeType: "S"
+        -
+          AttributeName: "timestamp"
+          AttributeType: "N"
+      KeySchema:
+        -
+          AttributeName: "likeId"
+          KeyType: "HASH"
+      ProvisionedThroughput:
+        ReadCapacityUnits: "5"
+        WriteCapacityUnits: "5"
+      TableName: "SocialLikeTableStaging"
+      GlobalSecondaryIndexes:
+        -
+          IndexName: "AppSyncLikeTable-eventId-timestamp-index"
+          KeySchema:
+            -
+              AttributeName: "eventId"
+              KeyType: "HASH"
+            -
+              AttributeName: "timestamp"
+              KeyType: "RANGE"
+          Projection:
+            ProjectionType: "ALL"
+          ProvisionedThroughput:
+            ReadCapacityUnits: "5"
+            WriteCapacityUnits: "5"
+        -
+          IndexName: "eventId-authorId-index"
+          KeySchema:
+            -
+              AttributeName: "eventId"
+              KeyType: "HASH"
+            -
+              AttributeName: "authorId"
+              KeyType: "RANGE"
+          Projection:
+            ProjectionType: "ALL"
+          ProvisionedThroughput:
+            ReadCapacityUnits: "5"
+            WriteCapacityUnits: "5"
+
+  AppSyncClipShotTableDataSource:
+    Type: 'AWS::AppSync::DataSource'
+    Properties:
+      ApiId: !GetAtt GraphQLApi.ApiId
+      Name: AppSyncClipShotTable
+      Description: The AppSyncComment in us-west-2
+      Type: AMAZON_DYNAMODB
+      ServiceRoleArn: "arn:aws:iam::148016069073:role/AppSyncDynamoDBRole"
+      DynamoDBConfig:
+        AwsRegion: "us-west-2"
+        TableName: "AppSyncClipShotTableStaging"
+  AppSyncEventTableDataSource:
+    Type: 'AWS::AppSync::DataSource'
+    Properties:
+      ApiId: !GetAtt GraphQLApi.ApiId
+      Name: AppSyncEventTable
+      Description: The AppSyncEvent in us-west-2
+      Type: AMAZON_DYNAMODB
+      ServiceRoleArn: "arn:aws:iam::148016069073:role/AppSyncDynamoDBRole"
+      DynamoDBConfig:
+        AwsRegion: "us-west-2"
+        TableName: "AppSyncEventTableStaging"
+  AppSyncEventTableDataSource:
+    Type: 'AWS::AppSync::DataSource'
+    Properties:
+      ApiId: !GetAtt GraphQLApi.ApiId
+      Name: AppSyncEventTable
+      Description: The AppSyncEvent in us-west-2
+      Type: AMAZON_DYNAMODB
+      ServiceRoleArn: "arn:aws:iam::148016069073:role/AppSyncDynamoDBRole"
+      DynamoDBConfig:
+        AwsRegion: "us-west-2"
+        TableName: "AppSyncEventTableStaging"
+  AppSyncUserTableDataSource:
+    Type: 'AWS::AppSync::DataSource'
+    Properties:
+      ApiId: !GetAtt GraphQLApi.ApiId
+      Name: AppSyncUserTable
+      Description: The AppSyncUserTable in us-west-2
+      Type: AMAZON_DYNAMODB
+      ServiceRoleArn: "arn:aws:iam::148016069073:role/AppSyncDynamoDBRole"
+      DynamoDBConfig:
+        AwsRegion: "us-west-2"
+        TableName: "AppSyncUserTableStaging"
+  ProdClipsTableDataSource:
+    Type: 'AWS::AppSync::DataSource'
+    Properties:
+      ApiId: !GetAtt GraphQLApi.ApiId
+      Name: ProdClipsTable
+      Description: The Prod.Clips table in us-west-2
+      Type: AMAZON_DYNAMODB
+      ServiceRoleArn: "arn:aws:iam::148016069073:role/AppSyncDynamoDBRole"
+      DynamoDBConfig:
+        AwsRegion: "us-west-2"
+        TableName: "Prod.ClipsStaging"
+  SocialCommentTableDataSource:
+    Type: 'AWS::AppSync::DataSource'
+    Properties:
+      ApiId: !GetAtt GraphQLApi.ApiId
+      Name: SocialCommentTable
+      Description: The socialcomment table in us-west-2
+      Type: AMAZON_DYNAMODB
+      ServiceRoleArn: "arn:aws:iam::148016069073:role/AppSyncDynamoDBRole"
+      DynamoDBConfig:
+        AwsRegion: "us-west-2"
+        TableName: "SocialCommentTableStaging"
+  SocialLikeTableDataSource:
+    Type: 'AWS::AppSync::DataSource'
+    Properties:
+      ApiId: !GetAtt GraphQLApi.ApiId
+      Name: SocialLikeTable
+      Description: The SocialLikeTable in us-west-2
+      Type: AMAZON_DYNAMODB
+      ServiceRoleArn: "arn:aws:iam::148016069073:role/AppSyncDynamoDBRole"
+      DynamoDBConfig:
+        AwsRegion: "us-west-2"
+        TableName: "SocialLikeTableStaging"
+
+
+  FieldCommentAuthorResolver:
+    Type: "AWS::AppSync::Resolver"
+    DependsOn: Schema
+    Properties:
+      ApiId: !GetAtt GraphQLApi.ApiId
+      TypeName: Comment
+      FieldName: author
+      DataSourceName: !GetAtt AppSyncUserTableDataSource.Name
+      RequestMappingTemplate: |
+        {
+              "version": "2017-02-28",
+              "operation": "GetItem",
+              "key": {
+                  "userId": $util.dynamodb.toDynamoDBJson($ctx.source.authorId),
+              }
+        }
+      ResponseMappingTemplate: "$util.toJson($ctx.result)"
+
+  FieldEventAuthorResolver:
+    Type: "AWS::AppSync::Resolver"
+    DependsOn: Schema
+    Properties:
+      ApiId: !GetAtt GraphQLApi.ApiId
+      TypeName: Event
+      FieldName: author
+      DataSourceName: !GetAtt AppSyncUserTableDataSource.Name
+      RequestMappingTemplate: |
+        {
+        	  "version": "2017-02-28",
+              "operation": "GetItem",
+              "key": {
+                  "userId": $util.dynamodb.toDynamoDBJson($ctx.source.authorId),
+              }
+        }
+      ResponseMappingTemplate: "$util.toJson($ctx.result)"
+
+  FieldEventClipResolver:
+    Type: "AWS::AppSync::Resolver"
+    DependsOn: Schema
+    Properties:
+      ApiId: !GetAtt GraphQLApi.ApiId
+      TypeName: Event
+      FieldName: clip
+      DataSourceName: !GetAtt ProdClipsTableDataSource.Name
+      RequestMappingTemplate: |
+        {
+            "version": "2017-02-28",
+            "operation": "GetItem",
+            "key": {
+                "ClipId": #if($ctx.source.clipId) $util.dynamodb.toDynamoDBJson($ctx.source.clipId)  #else null #end
+            }
+        }
+      ResponseMappingTemplate: |
+        #set ($slash = $context.result.s3url.lastIndexOf('/'))
+        #set( $s3url = "https://vuclip-a.akamaihd.net$context.result.s3url.substring($slash)/" )
+        #set( $tdir = "$context.result.TDirForWhole/" )
+        #set( $hlsfile = $context.result.Jwhlsfile )
+        #set( $url = "${s3url}${tdir}${hlsfile}" )
+        {
+            "clipId": $util.toJson($context.result.ClipId),
+            "title": $util.toJson($context.result.Title),
+            "thumb": $util.toJson($context.result.Tcid16x9),
+            "videoUrl" : $util.toJson($url)
+        }
+
+  FieldEventMyLikesResolver:
+    Type: "AWS::AppSync::Resolver"
+    DependsOn: Schema
+    Properties:
+      ApiId: !GetAtt GraphQLApi.ApiId
+      TypeName: Event
+      FieldName: myLikes
+      DataSourceName: !GetAtt SocialLikeTableDataSource.Name
+      RequestMappingTemplate: |
+        {
+              "version": "2017-02-28",
+              "index": "eventId-authorId-index",
+              "operation": "Query",
+              "query": {
+                 "expression": "eventId = :eventId AND authorId = :authorId",
+                    "expressionValues": {
+                        ":eventId": {
+                            "S": "$context.source.id"
+                        },
+                        ":authorId": {
+                            "S": "$context.source.feedOwnerId"
+                        }
+                    }
+              },
+              "limit": #if($context.arguments.limit) $context.arguments.limit #else 10 #end,
+              "nextToken": #if($context.arguments.nextToken) "$context.arguments.nextToken" #else null #end
+        }
+      ResponseMappingTemplate: |
+        {
+          "items": $util.toJson($context.result.items),
+          "nextToken": $util.toJson($context.result.nextToken)
+        }
+
+  FieldEventCommentsResolver:
+    Type: "AWS::AppSync::Resolver"
+    DependsOn: Schema
+    Properties:
+      ApiId: !GetAtt GraphQLApi.ApiId
+      TypeName: Event
+      FieldName: comments
+      DataSourceName: !GetAtt SocialCommentTableDataSource.Name
+      RequestMappingTemplate: |
+        {
+            "version": "2017-02-28",
+            "operation": "Query",
+            "index": "AppSyncComment-eventId-timestamp-index",
+            "query": {
+                "expression": "eventId = :eventId",
+                "expressionValues": {
+                    ":eventId": {
+                        "S": "$context.source.id"
+                    }
+                }
+            },
+            "limit": #if($context.arguments.limit) $context.arguments.limit #else 10 #end,
+            "nextToken": #if($context.arguments.nextToken) "$context.arguments.nextToken" #else null #end
+        }
+      ResponseMappingTemplate: |
+        {
+            "items": $util.toJson($context.result.items),
+            "nextToken": $util.toJson($context.result.nextToken)
+        }
+
+  FieldEventLikesResolver:
+    Type: "AWS::AppSync::Resolver"
+    DependsOn: Schema
+    Properties:
+      ApiId: !GetAtt GraphQLApi.ApiId
+      TypeName: Event
+      FieldName: likes
+      DataSourceName: !GetAtt SocialLikeTableDataSource.Name
+      RequestMappingTemplate: |
+        {
+              "version": "2017-02-28",
+              "operation": "Query",
+              "index": "AppSyncLikeTable-eventId-timestamp-index",
+              "query": {
+                  "expression": "eventId = :eventId",
+                  "expressionValues": {
+                      ":eventId": {
+                          "S": "$context.source.id"
+                      }
+                  }
+              },
+              "limit": #if($context.arguments.limit) $context.arguments.limit #else 10 #end,
+              "nextToken": #if($context.arguments.nextToken) "$context.arguments.nextToken" #else null #end
+        }
+      ResponseMappingTemplate: |
+        {
+              "items": $util.toJson($context.result.items),
+              "nextToken": $util.toJson($context.result.nextToken)
+        }
+
+  FieldEventClipshotsResolver:
+    Type: "AWS::AppSync::Resolver"
+    DependsOn: Schema
+    Properties:
+      ApiId: !GetAtt GraphQLApi.ApiId
+      TypeName: Event
+      FieldName: clipshots
+      DataSourceName: !GetAtt AppSyncClipShotTableDataSource.Name
+      RequestMappingTemplate: |
+        {
+            "version": "2017-02-28",
+            "operation": "Query",
+            "index": "AppSyncClipShot-eventId-timestamp-index",
+            "query": {
+                "expression": "eventId = :eventId",
+                "expressionValues": {
+                    ":eventId": {
+                        "S": "$context.source.id"
+                    }
+                }
+            },
+            "limit": #if($context.arguments.limit) $context.arguments.limit #else 10 #end,
+            "nextToken": #if($context.arguments.nextToken) "$context.arguments.nextToken" #else null #end
+        }
+      ResponseMappingTemplate: |
+        {
+            "items": $util.toJson($context.result.items),
+            "nextToken": $util.toJson($context.result.nextToken)
+        }
+
+  FieldLikeAuthorResolver:
+    Type: "AWS::AppSync::Resolver"
+    DependsOn: Schema
+    Properties:
+      ApiId: !GetAtt GraphQLApi.ApiId
+      TypeName: Like
+      FieldName: author
+      DataSourceName: !GetAtt AppSyncUserTableDataSource.Name
+      RequestMappingTemplate: |
+        {
+            "version": "2017-02-28",
+            "operation": "GetItem",
+            "key": {
+                "userId": $util.dynamodb.toDynamoDBJson($ctx.source.authorId),
+            }
+        }
+      ResponseMappingTemplate: "$util.toJson($ctx.result)"
+
+  MutationCommentOnEventResolver:
+    Type: 'AWS::AppSync::Resolver'
+    DependsOn: Schema
+    Properties:
+      ApiId: !GetAtt GraphQLApi.ApiId
+      TypeName: Mutation
+      FieldName: commentOnEvent
+      DataSourceName: !GetAtt SocialCommentTableDataSource.Name
+      RequestMappingTemplate: |
+        {
+            "version": "2017-02-28",
+            "operation": "PutItem",
+            "key": {
+                "commentId": { "S": "$util.autoId()" }
+            },
+            "attributeValues": {
+                "authorId": { "S": "$context.arguments.authorId" },
+                "eventId": { "S": "$context.arguments.eventId" },
+                "content": { "S": "$context.arguments.content" },
+                "timestamp": { "N": "$context.arguments.timestamp" }
+            }
+        }
+      ResponseMappingTemplate: $util.toJson($context.result)
+  MutationLikeOnEventResolver:
+    Type: 'AWS::AppSync::Resolver'
+    DependsOn: Schema
+    Properties:
+      ApiId: !GetAtt GraphQLApi.ApiId
+      TypeName: Mutation
+      FieldName: likeOnEvent
+      DataSourceName: !GetAtt SocialLikeTableDataSource.Name
+      RequestMappingTemplate: |
+        {
+            "version" : "2017-02-28",
+            "operation" : "PutItem",
+            "key" : {
+                ## If object "id" should come from GraphQL arguments, change to $util.dynamodb.toDynamoDBJson($ctx.args.id)
+                "likeId": $util.dynamodb.toDynamoDBJson($util.autoId()),
+            },
+            "attributeValues": {
+                "eventId": { "S": "$context.arguments.eventId" },
+                "authorId": { "S": "$context.arguments.authorId" },
+                "timestamp": { "N": -$context.arguments.timestamp }
+            }
+        }
+      ResponseMappingTemplate: $util.toJson($ctx.result)
+  MutationClipShotOnEventResolver:
+    Type: 'AWS::AppSync::Resolver'
+    DependsOn: Schema
+    Properties:
+      ApiId: !GetAtt GraphQLApi.ApiId
+      TypeName: Mutation
+      FieldName: clipShotOnEvent
+      DataSourceName: !GetAtt AppSyncClipShotTableDataSource.Name
+      RequestMappingTemplate: |
+        {
+            "version": "2017-02-28",
+            "operation": "PutItem",
+            "key": {
+                "eventId": { "S": "$context.arguments.eventId" },
+                "clipShotId": { "S": "$util.autoId()" }
+            },
+            "attributeValues": {
+                "clipId": { "S": "$context.arguments.clipId" },
+                "url": { "S": "$context.arguments.url" },
+                "timestamp": { "N": "$context.arguments.timestamp" }
+            }
+        }
+      ResponseMappingTemplate: $util.toJson($ctx.result)
+  MutationCreateEventResolver:
+    Type: 'AWS::AppSync::Resolver'
+    DependsOn: Schema
+    Properties:
+      ApiId: !GetAtt GraphQLApi.ApiId
+      TypeName: Mutation
+      FieldName: createEvent
+      DataSourceName: !GetAtt AppSyncEventTableDataSource.Name
+      RequestMappingTemplate: |
+        {
+            "version": "2017-02-28",
+            "operation": "PutItem",
+            "key": {
+                "id": { "S": "$util.autoId()"}
+            },
+            "attributeValues": {
+                "type": { "S": "$context.arguments.type" },
+                "message": { "S": "$context.arguments.message" },
+                "authorId": { "S": "$context.arguments.authorId" },
+                "timestamp": { "N": -$context.arguments.timestamp },
+                "clipId": { "S": "$context.arguments.clipId" },
+                "feedOwnerId" : { "S": "$context.arguments.feedOwnerId" }
+            }
+        }
+      ResponseMappingTemplate: $util.toJson($context.result)
+
+  MutationDeleteEventResolver:
+    Type: 'AWS::AppSync::Resolver'
+    DependsOn: Schema
+    Properties:
+      ApiId: !GetAtt GraphQLApi.ApiId
+      TypeName: Mutation
+      FieldName: deleteEvent
+      DataSourceName: !GetAtt AppSyncEventTableDataSource.Name
+      RequestMappingTemplate: |
+        {
+            "version": "2017-02-28",
+            "operation": "DeleteItem",
+            "key": {
+                "id": { "S": "$context.arguments.id"}
+            }
+        }
+      ResponseMappingTemplate: $util.toJson($context.result)
+
+  MutationDeleteLikeResolver:
+    Type: 'AWS::AppSync::Resolver'
+    DependsOn: Schema
+    Properties:
+      ApiId: !GetAtt GraphQLApi.ApiId
+      TypeName: Mutation
+      FieldName: deleteLike
+      DataSourceName: !GetAtt SocialLikeTableDataSource.Name
+      RequestMappingTemplate: |
+        {
+            "version" : "2017-02-28",
+            "operation" : "DeleteItem",
+            "key" : {
+                "likeId" : { "S" : "${ctx.args.id}" }
+            }
+        }
+      ResponseMappingTemplate: $util.toJson($ctx.result)
+
+  MutationDeleteCommentResolver:
+    Type: 'AWS::AppSync::Resolver'
+    DependsOn: Schema
+    Properties:
+      ApiId: !GetAtt GraphQLApi.ApiId
+      TypeName: Mutation
+      FieldName: deleteComment
+      DataSourceName: !GetAtt SocialCommentTableDataSource.Name
+      RequestMappingTemplate: |
+        {
+            "version" : "2017-02-28",
+            "operation" : "DeleteItem",
+            "key" : {
+                "commentId" : { "S" : "${ctx.args.id}" }
+            }
+        }
+      ResponseMappingTemplate: $util.toJson($ctx.result)
+
+  MutationAddUserResolver:
+    Type: 'AWS::AppSync::Resolver'
+    DependsOn: Schema
+    Properties:
+      ApiId: !GetAtt GraphQLApi.ApiId
+      TypeName: Mutation
+      FieldName: addUser
+      DataSourceName: !GetAtt AppSyncUserTableDataSource.Name
+      RequestMappingTemplate: |
+        {
+            "version" : "2017-02-28",
+            "operation" : "PutItem",
+            "key" : {
+                ## If object "id" should come from GraphQL arguments, change to $util.dynamodb.toDynamoDBJson($ctx.args.id)
+                "userId": { "S": "$context.arguments.userId" }
+            },
+            "attributeValues": {
+                "name": { "S": "$context.arguments.name" },
+                "profilePic": { "S": "$context.arguments.profilePic" }
+            }
+        }
+      ResponseMappingTemplate: $util.toJson($ctx.result)
+
+
+  QueryGetEventResolver:
+    Type: "AWS::AppSync::Resolver"
+    DependsOn: Schema
+    Properties:
+      ApiId: !GetAtt GraphQLApi.ApiId
+      TypeName: Query
+      FieldName: getEvent
+      DataSourceName: !GetAtt AppSyncEventTableDataSource.Name
+      RequestMappingTemplate: |
+        {
+            "version": "2017-02-28",
+            "operation": "GetItem",
+            "key": {
+                "id": { "S": "$context.arguments.id" }
+            }
+        }
+      ResponseMappingTemplate: "$util.toJson($context.result)"
+
+  QueryListEventsResolver:
+    Type: "AWS::AppSync::Resolver"
+    DependsOn: Schema
+    Properties:
+      ApiId: !GetAtt GraphQLApi.ApiId
+      TypeName: Query
+      FieldName: listEvents
+      DataSourceName: !GetAtt AppSyncEventTableDataSource.Name
+      RequestMappingTemplate: |
+        {
+              "version": "2017-02-28",
+              "operation": "Scan",
+              "filter": #if($context.args.filter) $util.transform.toDynamoDBFilterExpression($ctx.args.filter) #else null #end,
+              "limit": #if($context.arguments.limit) $context.arguments.limit #else 10 #end,
+              "nextToken": #if($context.arguments.nextToken) "$context.arguments.nextToken" #else null #end
+        }
+      ResponseMappingTemplate: |
+        {
+            "items": $util.toJson($context.result.items),
+            "nextToken": $util.toJson($context.result.nextToken)
+        }
+
+  QueryGetFeedResolver:
+    Type: "AWS::AppSync::Resolver"
+    DependsOn: Schema
+    Properties:
+      ApiId: !GetAtt GraphQLApi.ApiId
+      TypeName: Query
+      FieldName: getFeed
+      DataSourceName: !GetAtt AppSyncEventTableDataSource.Name
+      RequestMappingTemplate: |
+        {
+            "version": "2017-02-28",
+            "operation": "Query",
+            "index": "AppSyncEvent-feedId-timestamp-index",
+            "query": {
+                "expression": "feedOwnerId = :feedOwnerId",
+                "expressionValues": {
+                    ":feedOwnerId": {
+                        "S": "$context.arguments.feedOwnerId"
+                    }
+                }
+            },
+            "limit": #if($context.arguments.limit) $context.arguments.limit #else 10 #end,
+            "nextToken": #if($context.arguments.nextToken) "$context.arguments.nextToken" #else null #end
+        }
+      ResponseMappingTemplate: |
+        {
+            "items": $util.toJson($context.result.items),
+            "nextToken": $util.toJson($context.result.nextToken)
+        }
+
+  QueryListUsersResolver:
+    Type: "AWS::AppSync::Resolver"
+    DependsOn: Schema
+    Properties:
+      ApiId: !GetAtt GraphQLApi.ApiId
+      TypeName: Query
+      FieldName: listUsers
+      DataSourceName: !GetAtt AppSyncUserTableDataSource.Name
+      RequestMappingTemplate: |
+        {
+              "version": "2017-02-28",
+              "operation": "Scan",
+              "filter": #if($context.args.filter) $util.transform.toDynamoDBFilterExpression($ctx.args.filter) #else null #end,
+              "limit": #if($context.arguments.limit) $context.arguments.limit #else 10 #end,
+              "nextToken": #if($context.arguments.nextToken) "$context.arguments.nextToken" #else null #end
+        }
+      ResponseMappingTemplate: |
+        {
+              "items": $util.toJson($context.result.items),
+              "nextToken": $util.toJson($context.result.nextToken)
+        }
+
+  QueryGetUserResolver:
+    Type: "AWS::AppSync::Resolver"
+    DependsOn: Schema
+    Properties:
+      ApiId: !GetAtt GraphQLApi.ApiId
+      TypeName: Query
+      FieldName: getUser
+      DataSourceName: !GetAtt AppSyncUserTableDataSource.Name
+      RequestMappingTemplate: |
+        {
+            "version": "2017-02-28",
+              "operation": "GetItem",
+              "key": {
+                  "userId": $util.dynamodb.toDynamoDBJson($ctx.args.userId)
+              }
+        }
+      ResponseMappingTemplate: "$util.toJson($ctx.result)"
+
+  QueryListCommentsResolver:
+    Type: "AWS::AppSync::Resolver"
+    DependsOn: Schema
+    Properties:
+      ApiId: !GetAtt GraphQLApi.ApiId
+      TypeName: Query
+      FieldName: listComments
+      DataSourceName: !GetAtt SocialCommentTableDataSource.Name
+      RequestMappingTemplate: |
+        {
+              "version": "2017-02-28",
+              "operation": "Query",
+              "index": "AppSyncComment-eventId-timestamp-index",
+              "query": {
+                  "expression": "eventId = :eventId",
+                  "expressionValues": {
+                      ":eventId": {
+                          "S": "$context.arguments.eventId"
+                      }
+                  }
+              },
+              "limit": #if($context.arguments.limit) $context.arguments.limit #else 10 #end,
+              "nextToken": #if($context.arguments.nextToken) "$context.arguments.nextToken" #else null #end
+            },
+            "ResponseMapping": {
+              "items": $util.toJson($context.result.items),
+              "nextToken": $util.toJson($context.result.nextToken)
+            }
+        }
+      ResponseMappingTemplate: |
+        {
+              "items": $util.toJson($context.result.items),
+              "nextToken": $util.toJson($context.result.nextToken)
+        }
+
+  QueryListLikesResolver:
+    Type: "AWS::AppSync::Resolver"
+    DependsOn: Schema
+    Properties:
+      ApiId: !GetAtt GraphQLApi.ApiId
+      TypeName: Query
+      FieldName: listLikes
+      DataSourceName: !GetAtt SocialLikeTableDataSource.Name
+      RequestMappingTemplate: |
+        {
+              "version": "2017-02-28",
+              "operation": "Query",
+              "index": "AppSyncLikeTable-eventId-timestamp-index",
+              "query": {
+                  "expression": "eventId = :eventId",
+                  "expressionValues": {
+                      ":eventId": {
+                          "S": "$context.arguments.eventId"
+                      }
+                  }
+              },
+              "limit": #if($context.arguments.limit) $context.arguments.limit #else 10 #end,
+              "nextToken": #if($context.arguments.nextToken) "$context.arguments.nextToken" #else null #end
+        }
+      ResponseMappingTemplate: |
+        {
+              "items": $util.toJson($context.result.items),
+              "nextToken": $util.toJson($context.result.nextToken)
+        }
+
+  QueryListLikesByAuthorResolver:
+    Type: "AWS::AppSync::Resolver"
+    DependsOn: Schema
+    Properties:
+      ApiId: !GetAtt GraphQLApi.ApiId
+      TypeName: Query
+      FieldName: listLikesByAuthor
+      DataSourceName: !GetAtt SocialLikeTableDataSource.Name
+      RequestMappingTemplate: |
+        {
+              "version": "2017-02-28",
+              "operation": "Query",
+              "index": "eventId-authorId-index",
+              "query": {
+                  "expression": "eventId = :eventId AND authorId = :authorId",
+                  "expressionValues": {
+                      ":eventId": {
+                          "S": "$context.arguments.eventId"
+                      },
+                      ":authorId": {
+                          "S": "$context.arguments.authorId"
+                      }
+                  }
+              },
+              "limit": #if($context.arguments.limit) $context.arguments.limit #else 10 #end,
+              "nextToken": #if($context.arguments.nextToken) "$context.arguments.nextToken" #else null #end
+        }
+      ResponseMappingTemplate: |
+        {
+              "items": $util.toJson($context.result.items),
+              "nextToken": $util.toJson($context.result.nextToken)
+        }
+
+
+  Schema:
+    Type: 'AWS::AppSync::GraphQLSchema'
+    Properties:
+      ApiId: !GetAtt GraphQLApi.ApiId
+      Definition: |
+        type Clip {
+            clipId: String!
+            title: String!
+            thumb: String!
+            videoUrl: String
+        }
+        
+        type ClipShot {
+            clipShotId: ID!
+            eventId: String!
+            clipId: String
+            url: String
+            #  The clipshot timestamp. This field is indexed to enable sorted pagination.
+            timestamp: AWSTimestamp!
+        }
+
+        type ClipShotConnection {
+            items: [ClipShot]
+            nextToken: String
+        }
+
+        type Comment {
+            #  A unique identifier for the comment.
+            commentId: String!
+            authorId: String!
+            author: User
+            #  The comment's content.
+            content: String!
+            #  The comment timestamp. This field is indexed to enable sorted pagination.
+            timestamp: AWSTimestamp!
+            #  The id of the comment's parent event.
+            eventId: ID!
+        }
+
+        type CommentConnection {
+            items: [Comment]
+            nextToken: String
+        }
+
+        type Event {
+            id: ID!
+            # parent feed
+            feedOwnerId: String!
+            message: String
+            type: EventType!
+            authorId: String!
+            author: User
+            clipId: String
+            clip: Clip
+            myLikes(limit: Int, nextToken: String): LikeConnection
+            #  The event timestamp. This field is indexed to enable sorted pagination.
+            timestamp: AWSTimestamp!
+            #  Paginate through all comments belonging to an individual post.
+            comments(limit: Int, nextToken: String): CommentConnection
+            likes(limit: Int, nextToken: String): LikeConnection
+            clipshots(limit: Int, nextToken: String): ClipShotConnection
+        }
+
+        type EventConnection {
+            items: [Event]
+            nextToken: String
+        }
+
+        enum EventType {
+            EventTypeText
+            EventTypeClip
+            EventTypeClipShot
+        }
+
+        type Like {
+            likeId: ID!
+            eventId: String!
+            authorId: String!
+            author: User
+            #  The event timestamp. This field is indexed to enable sorted pagination.
+            timestamp: AWSTimestamp!
+        }
+
+        type LikeConnection {
+            items: [Like]
+            nextToken: String
+        }
+
+        type Mutation {
+            #  Comment on an event.
+            commentOnEvent(
+                authorId: String!,
+                content: String!,
+                eventId: ID!,
+                timestamp: AWSTimestamp!
+            ): Comment
+            #  like on an event.
+            likeOnEvent(authorId: String!, eventId: ID!, timestamp: AWSTimestamp!): Like
+            #  clipshot on an event.
+            clipShotOnEvent(
+                clipId: String!,
+                url: String,
+                eventId: ID!,
+                timestamp: AWSTimestamp!
+            ): ClipShot
+            #  Create a single event.
+            createEvent(
+                feedOwnerId: String!,
+                type: EventType!,
+                message: String!,
+                authorId: String!,
+                clipId: String,
+                timestamp: AWSTimestamp!
+            ): Event
+            #  Delete a single event by id.
+            deleteEvent(id: ID!): Event
+            deleteLike(id: ID!): Like
+            deleteComment(id: ID!): Comment
+            #  Add a user.
+            addUser(userId: String!, name: String!, profilePic: String): User
+        }
+
+        type Query {
+            #  Get a single event by id.
+            getEvent(id: ID!): Event
+            #  Paginate through events.
+            listEvents(filter: TableEventFilterInput, limit: Int, nextToken: String): EventConnection
+            #  Get a single feed by user id.
+            getFeed(feedOwnerId: ID!, limit: Int, nextToken: String): EventConnection
+            #  Paginate through users.
+            listUsers(filter: TableUserFilterInput, limit: Int, nextToken: String): UserConnection
+            #  Get a user
+            getUser(userId: String!): User
+            #  Get a list of comments
+            listComments(eventId: ID!, limit: Int, nextToken: String): CommentConnection
+            #  Get a list of likes
+            listLikes(eventId: ID!, limit: Int, nextToken: String): LikeConnection
+            listLikesByAuthor(
+                eventId: ID!,
+                authorId: String!,
+                limit: Int,
+                nextToken: String
+            ): LikeConnection
+        }
+
+        type Subscription {
+            subscribeToEventComments(eventId: String!): Comment
+                @aws_subscribe(mutations: ["commentOnEvent"])
+            subscribeToEventLikes(eventId: String!): Like
+                @aws_subscribe(mutations: ["likeOnEvent"])
+        }
+
+        input TableBooleanFilterInput {
+            eq: Boolean
+            ne: Boolean
+        }
+
+        input TableEventFilterInput {
+            id: TableIDFilterInput
+            message: TableStringFilterInput
+        }
+
+        input TableFloatFilterInput {
+            between: [Float]
+            contains: Float
+            eq: Float
+            ge: Float
+            gt: Float
+            le: Float
+            lt: Float
+            ne: Float
+            notContains: Float
+        }
+
+        input TableIDFilterInput {
+            beginsWith: ID
+            between: [ID]
+            contains: ID
+            eq: ID
+            ge: ID
+            gt: ID
+            le: ID
+            lt: ID
+            ne: ID
+            notContains: ID
+        }
+
+        input TableIntFilterInput {
+            between: [Int]
+            contains: Int
+            eq: Int
+            ge: Int
+            gt: Int
+            le: Int
+            lt: Int
+            ne: Int
+            notContains: Int
+        }
+
+        input TableStringFilterInput {
+            beginsWith: String
+            between: [String]
+            contains: String
+            eq: String
+            ge: String
+            gt: String
+            le: String
+            lt: String
+            ne: String
+            notContains: String
+        }
+
+        input TableUserFilterInput {
+            userId: TableStringFilterInput
+            name: TableStringFilterInput
+        }
+
+        type User {
+            userId: String!
+            name: String!
+            profilePic: String
+        }
+
+        type UserConnection {
+            items: [User]
+            nextToken: String
+        }
+Outputs:
+  GraphQLApiARN:
+    Description: The App ID of the GraphQL endpoint.
+    Value: !Ref GraphQLApi
+  GraphQLApiId:
+    Description: The App ID of the GraphQL endpoint.
+    Value: !GetAtt GraphQLApi.ApiId
+  GraphQLApiEndpoint:
+    Description: The URL for the GraphQL endpoint.
+    Value: !GetAtt GraphQLApi.GraphQLUrl
